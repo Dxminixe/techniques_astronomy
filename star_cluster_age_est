@@ -1,0 +1,231 @@
+##Start up & categories
+from pathlib import Path
+import sys
+
+sys.path.append(str(Path.home() / '140L' / 'cluster_age_est' / 'data'))
+
+import rio_reduce
+
+# Directories
+rawdir   = 'demo_data/raw/'
+caldir   = 'demo_data/calib/'
+reduxdir = 'demo_data/redux/'
+
+# Approximate coordinates of field, in degrees
+ra  = 351.2000
+dec =  61.5933
+
+#
+# Exposure file lists
+#
+
+bias_list = ['bias/IMG_00012211_BIAS_0.000secs.fit',
+             'bias/IMG_00012212_BIAS_0.000secs.fit',
+             'bias/IMG_00012213_BIAS_0.000secs.fit',
+             'bias/IMG_00012214_BIAS_0.000secs.fit',
+             'bias/IMG_00012215_BIAS_0.000secs.fit',
+             'bias/IMG_00012216_BIAS_0.000secs.fit',
+             'bias/IMG_00012217_BIAS_0.000secs.fit',
+             'bias/IMG_00012218_BIAS_0.000secs.fit',
+             'bias/IMG_00012219_BIAS_0.000secs.fit',
+             'bias/IMG_00012220_BIAS_0.000secs.fit',
+             'bias/IMG_00012221_BIAS_0.000secs.fit',
+             'bias/IMG_00012222_BIAS_0.000secs.fit',
+             'bias/IMG_00012223_BIAS_0.000secs.fit']
+
+tensec_dark_list = ['10sec/10sec_darks/IMG_00012224_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012225_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012226_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012227_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012228_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012229_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012230_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012231_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012232_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012233_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012234_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012235_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012236_DARK_10.000secs.fit', 
+                    '10sec/10sec_darks/IMG_00012237_DARK_10.000secs.fit',
+                    '10sec/10sec_darks/IMG_00012238_DARK_10.000secs.fit']
+
+twomin_dark_list = ['120sec/120sec_darks/IMG_00012239_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012240_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012241_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012242_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012243_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012244_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012245_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012246_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012247_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012248_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012249_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012250_DARK_120.000secs.fit', 
+                     '120sec/120sec_darks/IMG_00012251_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012252_DARK_120.000secs.fit',
+                     '120sec/120sec_darks/IMG_00012253_DARK_120.000secs.fit']
+
+g_flat_list = ['g_flats/IMG_0001012189_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012190_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012191_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012192_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012192_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012194_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012195_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012196_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012197_FLAT_g_0.005secs.fit',
+               'g_flats/IMG_0001012198_FLAT_g_0.005secs.fit']
+
+r_flat_list = ['r_flats/IMG_00012201_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012202_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012203_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012204_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012205_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012206_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012207_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012208_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012209_FLAT_r_0.012secs.fit',
+               'r_flats/IMG_00012210_FLAT_r_0.012secs.fit']
+
+tensec_g_science_list = ['10sec/g_exposures/IMG_00012300_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012301_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012302_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012303_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012304_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012305_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012306_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012307_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012308_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012309_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012310_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012311_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012312_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012313_g_180.000secs.fit',
+                        '10sec/g_exposures/IMG_00012314_g_180.000secs.fit']
+
+tensec_r_science_list = ['10sec/r_exposures/IMG_00012348_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012349_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012350_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012351_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012352_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012353_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012354_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012355_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012356_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012357_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012358_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012359_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012360_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012361_r_180.000secs.fit',
+                        '10sec/r_exposures/IMG_00012362_r_180.000secs.fit']
+
+twomin_g_science_list = ['120sec/g_exposures/IMG_00012315_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012316_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012317_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012318_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012319_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012320_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012321_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012323_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012324_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012325_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012326_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012327_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012328_g_180.000secs.fit',
+                        '120sec/g_exposures/IMG_00012329_g_180.000secs.fit']
+
+twomin_r_science_list = ['120sec/r_exposures/IMG_00012363_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012364_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012365_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012366_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012367_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012368_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012369_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012370_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012371_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012372_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012373_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012374_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012375_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012376_r_180.000secs.fit',
+                        '120sec/r_exposures/IMG_00012377_r_180.000secs.fit']
+
+#
+# Process calibrations
+#
+
+# Biases 
+med_bias_file = caldir+'median_bias.fit'
+rio_reduce.combine_bias(bias_list,rawdir,med_bias_file)
+
+# Darks for both 
+tensec_med_dark_file = caldir+'median_dark.fit'
+rio_reduce.combine_darks(tensec_dark_list,rawdir,tensec_med_dark_file)
+
+twomin_med_dark_file = caldir+'median_dark.fit'
+rio_reduce.combine_darks(twomin_dark_list,rawdir,twomin_med_dark_file)
+
+# Flats for both 
+r_med_flat_file = caldir+'median_flat.fit'
+rio_reduce.combine_flats(r_flat_list,rawdir,med_bias_file,r_med_flat_file)
+
+g_med_flat_file = caldir+'median_flat.fit'
+rio_reduce.combine_flats(g_flat_list,rawdir,med_bias_file,g_med_flat_file)
+
+#
+# Reduce science exposures
+#
+
+# Process individual frames (4 total)
+rio_reduce.process_exposures(twomin_r_science_list,rawdir,reduxdir,med_dark_file,r_med_flat_file)
+rio_reduce.process_exposures(twomin_g_science_list,rawdir,reduxdir,med_dark_file,g_med_flat_file)
+
+rio_reduce.process_exposures(tensec_r_science_list,rawdir,reduxdir,med_dark_file,r_med_flat_file)
+rio_reduce.process_exposures(tensec_r_science_list,rawdir,reduxdir,med_dark_file,r_med_flat_file)
+
+# Add WCS solutions
+#rio_reduce.add_wcs(science_list,reduxdir,ra,dec)
+                     
+# Create mosaic
+mosaic_file = 'mosaic.fits'
+#rio_reduce.make_mosaic(science_list,reduxdir,mosaic_file)
+
+
+
+
+## Plots the Data
+
+import matplotlib.pyplot as plt
+from astropy.io import fits
+
+## Opens the FITS file from its folder
+filepath1 = 'demo_data/calib/median_bias.fit'
+with fits.open(filepath1) as hdul:
+    bias_data = hdul[0].data  # Get the image pixel array
+    
+filepath2 = 'demo_data/calib/median_dark.fit'
+with fits.open(filepath2) as hdul:
+    dark_data = hdul[0].data  # Get the image pixel array
+
+filepath3 = 'demo_data/calib/median_flat.fit'
+with fits.open(filepath3) as hdul:
+    flat_data = hdul[0].data  # Get the image pixel array
+
+# Create subplots to show all 3 side-by-side
+fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+# Plots 
+im0 = axes[0].imshow(bias_data, cmap='gray', origin='lower')
+axes[0].set_title('Median Bias')
+fig.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
+
+im1 = axes[1].imshow(dark_data, cmap='gray', origin='lower')
+axes[1].set_title('Median Dark')
+fig.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
+
+im2 = axes[2].imshow(flat_data, cmap='gray', origin='lower')
+axes[2].set_title('Median Flat')
+fig.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
+
+plt.tight_layout()
+plt.show(
