@@ -4,15 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from multiband_photometry_wcs import run_photometry_wcs
 
-base_path = os.path.expanduser('~/Documents/140L_physics/lab_1/redux')
+base_path = os.path.expanduser('path')
 
-# Define Zero Points (ZP) derived from calibration stars
 zp_r_120sec = 24.86
 zp_r_10sec  = 22.26
 zp_g_120sec = 25.30
 zp_g_10sec  = 22.58
 
-# Gather image paths
+## image organization 
 mosaic_120s_r = glob(os.path.join(base_path, 'proc_120sec/r_exposures', '*.fit'))
 mosaic_10s_r  = glob(os.path.join(base_path, 'proc_10sec/r_exposures', '*.fit'))
 mosaic_120s_g = glob(os.path.join(base_path, 'proc_120sec/g_exposures', '*.fit'))
@@ -25,7 +24,6 @@ fwhm_val = 2.5
 results = run_photometry_wcs(image_list, fwhm=fwhm_val)
 n_source = results.shape[0]
 
-# Build a matching ZP array for every column/image in 'image_list'
 zp_array = np.array(
     [zp_r_120sec] * len(mosaic_120s_r) +
     [zp_r_10sec]  * len(mosaic_10s_r) +
@@ -33,8 +31,6 @@ zp_array = np.array(
     [zp_g_10sec]  * len(mosaic_10s_g)
 )
 
-# Convert counts to calibrated apparent magnitudes
-# results shape is (n_sources, n_images), so zp_array broadcasts along columns (axis=1)
 ab_mags = -2.5 * np.log10(results) + zp_array
 
 # Column Titling Indices
@@ -49,21 +45,20 @@ r_mag_10s  = np.nanmean(ab_mags[:, col_index_r_10s], axis=1)
 g_mag_120s = np.nanmean(ab_mags[:, col_index_g_120s], axis=1)
 g_mag_10s  = np.nanmean(ab_mags[:, col_index_g_10s], axis=1)
 
-# Stitch 10s and 120s exposures (use 10s for bright stars to avoid saturation)
 bright_mask = ~np.isnan(g_mag_10s) & (g_mag_10s <= 13)
 
 g_mag = np.where(bright_mask, g_mag_10s, g_mag_120s)
 r_mag = np.where(bright_mask, r_mag_10s, r_mag_120s)
 
-# Correct magnitudes for interstellar dust extinction
+## Gas Corrector
 g_mag_corr = g_mag - 2.781
 r_mag_corr = r_mag - 1.961
 
-# Distance Modulus 
+## Distance Modulus 
 distance_pc = 1400.0  
 distance_modulus = 5.0 * np.log10(distance_pc / 10.0)
 
-# Calculate Absolute Magnitude and Color Index
+## Absolute Magnitude and Color Index
 M_g = g_mag_corr - distance_modulus
 color_gr = g_mag_corr - r_mag_corr
 
