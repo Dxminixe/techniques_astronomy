@@ -1,0 +1,81 @@
+import os
+from glob import glob
+import numpy as np
+import matplotlib.pyplot as plt
+from multiband_photometry_wcs import run_photometry_wcs
+
+base_path = os.path.expanduser('~/Documents/140L_physics/lab_1/redux')
+
+# Define Zero Points (ZP) derived from calibration stars
+zp_r_120sec = 24.86
+zp_r_10sec  = 22.26
+zp_g_120sec = 25.30
+zp_g_10sec  = 22.58
+
+# Gather image paths
+mosaic_120s_r = glob(os.path.join(base_path, 'proc_120sec/r_exposures', '*.fit'))
+mosaic_10s_r  = glob(os.path.join(base_path, 'proc_10sec/r_exposures', '*.fit'))
+mosaic_120s_g = glob(os.path.join(base_path, 'proc_120sec/g_exposures', '*.fit'))
+mosaic_10s_g  = glob(os.path.join(base_path, 'proc_10sec/g_exposures', '*.fit'))
+
+image_list = mosaic_120s_r + mosaic_10s_r + mosaic_120s_g + mosaic_10s_g
+fwhm_val = 2.5 
+
+# Run WCS Photometry across all images
+results = run_photometry_wcs(image_list, fwhm=fwhm_val)
+n_source = results.shape[0]
+
+# Build a matching ZP array for every column/image in 'image_list'
+zp_array = np.array(
+    [zp_r_120sec] * len(mosaic_120s_r) +
+    [zp_r_10sec]  * len(mosaic_10s_r) +
+    [zp_g_120sec] * len(mosaic_120s_g) +
+    [zp_g_10sec]  * len(mosaic_10s_g)
+)
+
+# Convert counts to calibrated apparent magnitudes
+# results shape is (n_sources, n_images), so zp_array broadcasts along columns (axis=1)
+ab_mags = -2.5 * np.log10(results) + zp_array
+
+# Column Titling Indices
+col_index_r_120s = [i for i, path in enumerate(image_list) if 'proc_120sec/r_exposures' in path]
+col_index_r_10s  = [i for i, path in enumerate(image_list) if 'proc_10sec/r_exposures' in path]
+col_index_g_120s = [i for i, path in enumerate(image_list) if 'proc_120sec/g_exposures' in path]
+col_index_g_10s  = [i for i, path in enumerate(image_list) if 'proc_10sec/g_exposures' in path]
+
+# Extract magnitude arrays using nanmean across multiple exposures
+r_mag_120s = np.nanmean(ab_mags[:, col_index_r_120s], axis=1)
+r_mag_10s  = np.nanmean(ab_mags[:, col_index_r_10s], axis=1)
+g_mag_120s = np.nanmean(ab_mags[:, col_index_g_120s], axis=1)
+g_mag_10s  = np.nanmean(ab_mags[:, col_index_g_10s], axis=1)
+
+# Stitch 10s and 120s exposures (use 10s for bright stars to avoid saturation)
+bright_mask = ~np.isnan(g_mag_10s) & (g_mag_10s <= 13)
+
+g_mag = np.where(bright_mask, g_mag_10s, g_mag_120s)
+r_mag = np.where(bright_mask, r_mag_10s, r_mag_120s)
+
+# Correct magnitudes for interstellar dust extinction
+g_mag_corr = g_mag - 2.781
+r_mag_corr = r_mag - 1.961
+
+# Distance Modulus 
+distance_pc = 1400.0  
+distance_modulus = 5.0 * np.log10(distance_pc / 10.0)
+
+# Calculate Absolute Magnitude and Color Index
+M_g = g_mag_corr - distance_modulus
+color_gr = g_mag_corr - r_mag_corr
+
+# Filter out NaNs and infs for plotting
+valid_mask = ~np.isnan(color_gr) & ~np.isnan(M_g) & ~np.isinf(color_gr) & ~np.isinf(M_g)
+
+# Plot Color-Magnitude Diagram
+plt.figure(figsize=(8, 6))
+plt.scatter(color_gr[valid_mask], M_g[valid_mask], s=5, c='black', alpha=0.7)
+plt.gca().invert_yaxis()
+plt.xlabel('g - r Color')
+plt.ylabel('Absolute Magnitude $M_g$')
+plt.title('M52 Color-Magnitude Diagram')
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
