@@ -1,0 +1,60 @@
+import glob
+import numpy as np
+import matplotlib.pyplot as plt
+from astropy.io import fits
+
+# Plot the calibrated results 
+phot_data = np.load('phot_data.npy')
+ha = phot_data[:, 0]   # column 0 = Halpha (it defined the apertures)
+r  = phot_data[:, 1]   # column 1 = r
+
+# Keep only stars with finite, positive fluxes in both bands
+good = np.isfinite(ha) & np.isfinite(r) & (ha > 0) & (r > 0)
+ha, r = ha[good], r[good]
+print(len(ha), "stars kept")
+
+fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+ax[0].scatter(ha, r, s=8)
+ax[0].set_xscale('log'); ax[0].set_yscale('log')
+ax[0].set_xlabel('H-alpha flux (erg/s/cm²/Hz)'); ax[0].set_ylabel('r flux (erg/s/cm²/Hz)')
+
+ax[1].scatter(ha, r/ha, s=8)
+ax[1].set_xscale('log')
+ax[1].set_xlabel('H-alpha flux (erg/s/cm²/Hz)')
+ax[1].set_ylabel('r / H-alpha')
+
+plt.tight_layout()
+plt.show()   # Script pause
+
+
+###################### Continuum Subtraction ######################
+
+
+ha_min = None  # fill in from the plot (visual analysis)
+ha_max = None   # fill in from the plot
+
+if ha_min is None or ha_max is None:
+    raise SystemExit("Pick ha_min and ha_max from the plot first.") 
+
+sel = (ha > ha_min) & (ha < ha_max)
+ratio = np.median(r[sel] / ha[sel])
+print("median r/Halpha =", ratio, "from", sel.sum(), "stars")
+
+# Must be the same mosaics used in run_photometry.py
+h_alpha_exposures = sorted(glob.glob('/path/to/'))
+r_exposures = sorted(glob.glob('/path/to/'))
+
+ha_file = 'h_alpha_mosaic_cal.fits'
+r_file  = 'r_mosaic_cal.fits'
+
+ha_img, hdr = fits.getdata(ha_file, header=True)
+r_img = fits.getdata(r_file)
+
+line = ha_img - r_img / ratio
+fits.writeto('halpha_line_only.fits', line, hdr, overwrite=True)
+
+
+
+
+
