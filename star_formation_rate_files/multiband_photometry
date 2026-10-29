@@ -8,7 +8,7 @@ from photutils.aperture import aperture_photometry, CircularAperture
 from astropy.wcs import WCS
 import os 
 
-base_path = os.path.expanduser('/Users/dxminixe/Documents/140L_physics/lab_2/python_scripts')
+base_path = os.path.expanduser('/path/to/')
 
 fwhm = 1.639585 * 2 
 
