@@ -1,0 +1,162 @@
+# Updated for new version of rio_reduce 10/19/2026 GDB
+# Import RIO reduction routines
+
+  
+import rio_reduce
+import os 
+
+base_path = os.path.expanduser('/Users/dxminixe/Documents/140L_physics/lab_2/python_scripts')
+
+# Directories
+rawdir   = '/Users/dxminixe/Documents/140L_physics/lab_2/raw'
+caldir   = '/Users/dxminixe/Documents/140L_physics/lab_2/calib/'
+reduxdir = '/Users/dxminixe/Documents/140L_physics/lab_2/redux/'
+
+# Approximate coordinates of field, in degrees
+ra  = 339.2669
+dec =  34.4158
+
+# Exposure file lists
+
+bias_list = ['/bias/IMG_00012475_BIAS_0.000secs.fit',
+             '/bias/IMG_00012476_BIAS_0.000secs.fit',
+             '/bias/IMG_00012477_BIAS_0.000secs.fit',
+             '/bias/IMG_00012478_BIAS_0.000secs.fit',
+             '/bias/IMG_00012479_BIAS_0.000secs.fit',
+             '/bias/IMG_00012480_BIAS_0.000secs.fit',
+             '/bias/IMG_00012481_BIAS_0.000secs.fit',
+             '/bias/IMG_00012482_BIAS_0.000secs.fit',
+             '/bias/IMG_00012483_BIAS_0.000secs.fit',
+             '/bias/IMG_00012484_BIAS_0.000secs.fit']
+
+darks = ['/darks/IMG_00012485_DARK_600.000secs.fit',
+                 '/darks/IMG_00012486_DARK_600.000secs.fit',
+                 '/darks/IMG_00012487_DARK_600.000secs.fit',
+                 '/darks/IMG_00012488_DARK_600.000secs.fit',
+                 '/darks/IMG_00012489_DARK_600.000secs.fit',
+                 '/darks/IMG_00012490_DARK_600.000secs.fit',
+                 '/darks/IMG_00012491_DARK_600.000secs.fit',
+                 '/darks/IMG_00012492_DARK_600.000secs.fit',
+                 '/darks/IMG_00012493_DARK_600.000secs.fit',]
+
+r_flat_list = ['/r_FLATS/IMG_00012394_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012395_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012396_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012397_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012398_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012399_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012400_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012401_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012402_FLAT_r_0.040secs.fit',
+             '/r_FLATS/IMG_00012403_FLAT_r_0.040secs.fit']
+
+h_alpha_flat_list = ['/h_alpha_FLATS/IMG_00012381_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012382_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012383_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012385_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012386_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012387_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012388_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012389_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012390_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012391_FLAT_H-alpha_0.500secs.fit',
+             '/h_alpha_FLATS/IMG_00012392_FLAT_H-alpha_0.500secs.fit']
+
+r_exposures_list = ['/r_exposures/IMG_00012445_r_180.000secs.fit',
+                '/r_exposures/IMG_00012446_r_180.000secs.fit',
+                '/r_exposures/IMG_00012447_r_180.000secs.fit',
+                '/r_exposures/IMG_00012448_r_180.000secs.fit',
+                '/r_exposures/IMG_00012449_r_180.000secs.fit',
+                '/r_exposures/IMG_00012450_r_180.000secs.fit',
+                '/r_exposures/IMG_00012451_r_180.000secs.fit',
+                '/r_exposures/IMG_00012452_r_180.000secs.fit',
+                '/r_exposures/IMG_00012453_r_180.000secs.fit',
+                '/r_exposures/IMG_00012454_r_180.000secs.fit']
+
+h_alpha_exposures_list = ['/h_alpha_exposures/IMG_00012466_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012467_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012468_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012469_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012470_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012471_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012472_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012473_H-alpha_600.000secs.fit',
+                '/h_alpha_exposures/IMG_00012474_H-alpha_600.000secs.fit']
+
+
+# Process calibrations
+
+# Biases
+med_bias_file = caldir+'median_bias.fit'
+rio_reduce.combine_bias(bias_list,rawdir,med_bias_file)
+
+sixh_sec_med_dark_file = caldir+'600sec_median_dark.fit'
+rio_reduce.combine_darks(darks, rawdir, med_bias_file, sixh_sec_med_dark_file)
+
+# Flats
+r_med_flat_file = caldir+'r_median_flat.fit'
+rio_reduce.combine_flats(r_flat_list, rawdir, med_bias_file, r_med_flat_file)
+
+h_alpha_med_flat_file = caldir+'h_alpha_median_flat.fit'
+rio_reduce.combine_flats(h_alpha_flat_list, rawdir, med_bias_file, h_alpha_med_flat_file)
+
+#
+# Reduce science exposures
+#
+
+# Process individual frames
+rio_reduce.process_exposures(r_exposures_list, rawdir, reduxdir, med_bias_file, sixh_sec_med_dark_file, r_med_flat_file)
+rio_reduce.process_exposures(h_alpha_exposures_list, rawdir, reduxdir, med_bias_file, sixh_sec_med_dark_file, h_alpha_med_flat_file)
+
+# Add WCS solutions
+rio_reduce.add_wcs(r_exposures_list,reduxdir,ra,dec)
+rio_reduce.add_wcs(h_alpha_exposures_list,reduxdir,ra,dec)
+                             
+# Create mosaic
+rio_reduce.make_mosaic(h_alpha_exposures_list, reduxdir, 'h_alpha_mosaic.fits')
+rio_reduce.make_mosaic(r_exposures_list, reduxdir, 'r_mosaic.fits', reference='h_alpha_mosaic.fits')
+
+## Plots the Data
+import matplotlib.pyplot as plt
+from astropy.io import fits
+
+## Opens the FITS file from its folder
+filepath1 = '~/Documents/140L_physics/lab_2/calib/median_bias.fit'
+with fits.open(filepath1) as hdul:
+    bias_data = hdul[0].data  # Get the image pixel array
+
+filepath2 = '~/Documents/140L_physics/lab_2/calib/600sec_median_dark.fit'
+with fits.open(filepath2) as hdul:
+    sixh_sec_dark_data = hdul[0].data  # Get the image pixel array
+
+filepath3 = '~/Documents/140L_physics/lab_2/calib/r_median_flat.fit'
+with fits.open(filepath3) as hdul:
+    r_median_flat_data = hdul[0].data  # Get the image pixel array
+
+filepath4 = '~/Documents/140L_physics/lab_2/calib/h_alpha_median_flat.fit'
+with fits.open(filepath4) as hdul:
+    h_alpha_median_flat_data = hdul[0].data  # Get the image pixel array
+
+
+# Create subplots to show all side-by-side
+fig, axes = plt.subplots(1, 4, figsize=(25, 5))
+
+# Plots 
+im0 = axes[0].imshow(bias_data, cmap='gray', origin='lower')
+axes[0].set_title('Median Bias')
+fig.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
+
+im1 = axes[1].imshow(sixh_sec_dark_data, cmap='gray', origin='lower')
+axes[1].set_title('Median 600 sec Dark')
+fig.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
+
+im2 = axes[2].imshow(r_median_flat_data, cmap='gray', origin='lower')
+axes[2].set_title('Median Red Flat')
+fig.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
+
+im3 = axes[3].imshow(h_alpha_median_flat_data, cmap='gray', origin='lower')
+axes[3].set_title('Median H⍺ Flat')
+fig.colorbar(im3, ax=axes[3], fraction=0.046, pad=0.04)
+
+plt.tight_layout()
+plt.show()
