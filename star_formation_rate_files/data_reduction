@@ -5,12 +5,12 @@
 import rio_reduce
 import os 
 
-base_path = os.path.expanduser('/Users/dxminixe/Documents/140L_physics/lab_2/python_scripts')
+base_path = os.path.expanduser('/path/to')
 
 # Directories
-rawdir   = '/Users/dxminixe/Documents/140L_physics/lab_2/raw'
-caldir   = '/Users/dxminixe/Documents/140L_physics/lab_2/calib/'
-reduxdir = '/Users/dxminixe/Documents/140L_physics/lab_2/redux/'
+rawdir   = '/path/to/raw'
+caldir   = '/path/to/calib/'
+reduxdir = '/path/to/redux/'
 
 # Approximate coordinates of field, in degrees
 ra  = 339.2669
@@ -121,19 +121,19 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 
 ## Opens the FITS file from its folder
-filepath1 = '~/Documents/140L_physics/lab_2/calib/median_bias.fit'
+filepath1 = '~/path/to/calib/median_bias.fit'
 with fits.open(filepath1) as hdul:
     bias_data = hdul[0].data  # Get the image pixel array
 
-filepath2 = '~/Documents/140L_physics/lab_2/calib/600sec_median_dark.fit'
+filepath2 = '~/path/to/calib/600sec_median_dark.fit'
 with fits.open(filepath2) as hdul:
     sixh_sec_dark_data = hdul[0].data  # Get the image pixel array
 
-filepath3 = '~/Documents/140L_physics/lab_2/calib/r_median_flat.fit'
+filepath3 = '~/path/to/calib/r_median_flat.fit'
 with fits.open(filepath3) as hdul:
     r_median_flat_data = hdul[0].data  # Get the image pixel array
 
-filepath4 = '~/Documents/140L_physics/lab_2/calib/h_alpha_median_flat.fit'
+filepath4 = '~/path/to/calib/h_alpha_median_flat.fit'
 with fits.open(filepath4) as hdul:
     h_alpha_median_flat_data = hdul[0].data  # Get the image pixel array
 
