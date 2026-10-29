@@ -1,0 +1,246 @@
+# Python routines for reducing RIO imaging data
+#
+# 11/24/2025
+# Updated to be more multi-OS friendly 10/2026
+# Bias-subtracting darks and science files, scaling darks by exposure time
+#    before subtracting, using outlier rejection for mosaics 10/19/2026
+# Provided by Dr. George Becker
+
+import numpy as np
+from astropy.wcs import WCS
+from astropy.io import fits
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.stats import sigma_clip
+import twirl
+from reproject.mosaicking import find_optimal_celestial_wcs
+from reproject import reproject_interp
+
+def combine_bias(bias_list,input_dir,output_bias_file):
+    # Array size
+    with fits.open(input_dir+bias_list[0],memmap=False) as hdul:
+        hdr = hdul[0].header.copy()
+    xsz = hdr['NAXIS1']
+    ysz = hdr['NAXIS2']
+    # Read in raw bias frames
+    n_bias = len(bias_list)
+    all_bias = np.zeros((ysz,xsz,n_bias),dtype=np.float32)
+    for i in range(n_bias):
+        with fits.open(input_dir+bias_list[i],memmap=False) as hdul:
+            # Dividing by 16 to account for 12-bit to 16-bit conversion
+            all_bias[:,:,i] = hdul[0].data / 16
+            if i == 0:
+                hdr0 = hdul[0].header.copy()
+    # Median combine (random hot pixels)
+    med_bias = np.median(all_bias,axis=2)
+    # Write results
+    output_hdul = fits.PrimaryHDU(med_bias,header=hdr0)
+    output_hdul.writeto(output_bias_file,overwrite=True)
+    return
+
+def combine_darks(dark_list,input_dir,bias_file,output_dark_file):
+    # Array size
+    with fits.open(input_dir+dark_list[0],memmap=False) as hdul:
+        hdr = hdul[0].header.copy()
+    xsz = hdr['NAXIS1']
+    ysz = hdr['NAXIS2']
+    # Read in bias
+    with fits.open(bias_file, memmap=False) as hdul:
+        bias = hdul[0].data.copy()   
+    # Read in darks
+    n_dark = len(dark_list)
+    all_dark = np.zeros((ysz,xsz,n_dark),dtype=np.float32)
+    for i in range(n_dark):
+        with fits.open(input_dir+dark_list[i],memmap=False) as hdul:
+            # Dividing by 16 to account for 12-bit to 16-bit conversion
+            # Also bias-subtract
+            all_dark[:,:,i] = (hdul[0].data / 16) - bias
+            if i == 0:
+                hdr0 = hdul[0].header.copy()
+    # Median combine (random hot pixels)
+    med_dark = np.median(all_dark, axis=2)
+    # Write results
+    output_hdul = fits.PrimaryHDU(med_dark,header=hdr0)
+    output_hdul.writeto(output_dark_file,overwrite=True)
+    return
+
+def combine_flats(flat_list,input_dir,bias_file,output_flat_file):
+    # Read in bias
+    with fits.open(bias_file, memmap=False) as hdul:
+        bias = hdul[0].data.copy()
+    # Array size
+    with fits.open(input_dir+flat_list[0],memmap=False) as hdul:
+        hdr = hdul[0].header.copy()
+    xsz = hdr['NAXIS1']
+    ysz = hdr['NAXIS2']
+    # Read in flat frames
+    n_flat = len(flat_list)
+    all_flat = np.zeros((ysz,xsz,n_flat),dtype=np.float32)
+    for i in range(n_flat):
+        with fits.open(input_dir+flat_list[i], memmap=False) as hdul:
+            # Dividing by 16 to account for 12-bit to 16-bit conversion
+            # Also bias-subtract
+            tmp_flat = (hdul[0].data / 16) - bias
+            # Divide by median value
+            tmp_flat /= np.median(tmp_flat)
+            all_flat[:,:,i] = tmp_flat
+            if i == 0:
+                hdr0 = hdul[0].header.copy()
+    # Median combine (random hot pixels)
+    med_flat = np.median(all_flat, axis=2)
+    # Write results
+    output_hdul = fits.PrimaryHDU(med_flat,header=hdr0)
+    output_hdul.writeto(output_flat_file,overwrite=True)
+    return
+
+def process_exposures(exposure_list,input_dir,output_dir,bias_file,dark_file,flat_file):
+    # Read in bias
+    with fits.open(bias_file, memmap=False) as hdul:
+        bias = hdul[0].data.copy()    
+    # Read in dark.  Should be bias-subtracted.
+    with fits.open(dark_file,memmap=False) as hdul:
+        dark = hdul[0].data.copy()
+        dark_hdr = hdul[0].header.copy()
+    dark_texp = dark_hdr['EXPTIME']
+    # Read in flat
+    with fits.open(flat_file,memmap=False) as hdul:
+        flat = hdul[0].data.copy()
+    # Process exposures
+    n_exposure = len(exposure_list)
+    for i in range(n_exposure):
+        filename = input_dir+exposure_list[i]
+        # Open exposure
+        with fits.open(filename,memmap=False) as hdul:
+            hdr = hdul[0].header.copy()
+            raw_data = hdul[0].data.copy()
+            raw_hdr  = hdul[0].header.copy()
+        # Binning
+        xbinning = hdr['XBINNING']
+        if xbinning == 1:
+            # 1x1
+            rdnoise = 1.7
+            varfactor = 1.0
+        elif xbinning == 2:
+            # 2x2
+            rdnoise = 0.8
+            varfactor = 0.25
+        # Dividing by 16 to account for 12-bit to 16-bit conversion
+        raw_data = raw_data / 16
+        # Subtract bias and dark.  Scale dark counts by exposure times.
+        # Note: Dark count rates in science and dark frames may differ,
+        # even at same detector temperature.  Should dynamically rescale 
+        # darks based on fit to pixels with high dark counts.  Could
+        # do an iterative fit to raw = sky + scale*dark.  The factor of
+        # 0.87 here was measured from 600s H-alpha exposures.
+        raw_texp   = raw_hdr['EXPTIME']
+        dark_scale = raw_texp / dark_texp
+        exp_data   = raw_data - bias - 0.87*dark_scale*dark # Kludge
+        # Estimate variance assuming Poisson stats.  Avoid negative values (note in instructions).
+        # Account for averaging in error estimation when binning.
+        exp_sig = np.sqrt(varfactor*np.maximum(raw_data,0) + rdnoise**2)  # Assumes bias~0
+        # Flat field
+        exp_data /= flat
+        exp_sig /= flat
+        # Subtract sky.  Estimate using sigma clipping.
+        # This leaves a slightly negative sky residual in the
+        # combined frames.
+        nsig_rej_list = [5, 4, 3, 2, 2, 1, 1]
+        n_iter = 7
+        # Assume object is at center of image and measure sky from edge
+        sky_vals = exp_data[:, 0:299]
+        for t in range(n_iter):
+            tmp_med = np.median(sky_vals)
+            tmp_sdev = np.std(sky_vals)
+            nsig_rej = nsig_rej_list[t]
+            tmp_lo = tmp_med - nsig_rej*tmp_sdev
+            tmp_hi = tmp_med + nsig_rej*tmp_sdev
+            sky_vals = exp_data[(exp_data > tmp_lo)*(exp_data < tmp_hi)]
+        tmp_sky = np.median(sky_vals)
+        exp_data -= tmp_sky
+        # # Divide by exposure time
+        # exp_data /= texp
+        # exp_sig  /= texp
+        # Write results
+        output_hdul = fits.PrimaryHDU(exp_data,header=hdr)
+        output_hdul.writeto(output_dir + 'proc_'+exposure_list[i],overwrite=True)
+        sig_output_hdul = fits.PrimaryHDU(exp_sig,header=hdr)
+        sig_output_hdul.writeto(output_dir+'sig_'+exposure_list[i],overwrite=True)
+    return
+
+def add_wcs(exposure_list,input_dir,ra,dec):
+    n_exposure = len(exposure_list)
+    for i in range(n_exposure):
+        filename = input_dir+'proc_'+exposure_list[i]
+        # Read FITS image and CLOSE IT before trying to overwrite it
+        with fits.open(filename,memmap=False) as hdul:
+            data = hdul[0].data.copy()
+            header = hdul[0].header.copy()
+        # Approximate center of the image
+        center = SkyCoord(ra, dec, unit=["deg", "deg"])
+        # Pixel size, in arc seconds.  0.54 is for RIO imager with 2x2
+        # binning.  Only needs to be accurate to ~10%.
+        approx_unbinned_pixel_scale = 0.27 * u.arcsec
+        xbinning = header['XBINNING']
+        if xbinning == 1:
+            pixel_scale = approx_unbinned_pixel_scale
+        elif xbinning == 2:
+            pixel_scale = 2 * approx_unbinned_pixel_scale
+        # Field of view size, in degrees
+        shape = data.shape
+        fov   = (np.sqrt(shape[0]**2 + shape[1]**2)*pixel_scale.to(u.deg))
+        # Get GAIA stars in this field.  The factor of 1.2 increases the
+        # search area slightly.  Take the 30 brightest.
+        sky_coords = twirl.gaia_radecs(center,1.2 * fov)[0:30]
+        # Detect stars in the image.  Take the 20 brightest.
+        pixel_coords = twirl.find_peaks(data)[0:20]
+        # Compute WCS
+        data_wcs = twirl.compute_wcs(pixel_coords,sky_coords)
+        # Add WCS information
+        header.update(data_wcs.to_header())
+        # Original FITS file is CLOSED at this point,
+        # so Windows can safely replace it.
+        fits.writeto(filename,data,header,overwrite=True)
+    return
+
+def make_mosaic(exposure_list,input_dir,mosaic_file,reference=None):
+    # Processed exposures
+    proc_list = [input_dir + 'proc_' + file for file in exposure_list]
+    # WCS and shape
+    if reference is None:
+        # Generate an optimal WCS for the input exposures
+        wcs_out, shape_out = find_optimal_celestial_wcs(proc_list)
+    else:
+        # Use WCS and shape from reference image
+        with fits.open(reference, memmap=False) as hdul:
+            wcs_out = WCS(hdul[0].header)
+            ref_data = hdul[0].data.copy()
+        shape_out = ref_data.shape
+    # Reproject each exposure onto the common WCS footprint grid
+    reprojected_images = []
+    footprints = []
+    for file in proc_list:
+        with fits.open(file, memmap=False) as hdul:
+            array, footprint = reproject_interp(hdul[0], wcs_out, shape_out=shape_out)
+            reprojected_images.append(array)
+            footprints.append(footprint)
+    # Convert to 3D stack: shape (N_images, Y, X)
+    stack = np.array(reprojected_images)
+    footprint_stack = np.array(footprints)
+    # Mask regions outside valid image coverage (where footprint == 0)
+    stack_masked = np.ma.masked_where(footprint_stack == 0, stack)
+    # Apply sigma clipping along the image axis
+    nsig = 3.0
+    clipped_stack = sigma_clip(
+        stack_masked, 
+        sigma_lower=nsig, 
+        sigma_upper=nsig, 
+        axis=0, 
+        masked=True
+    )
+    # Combine remaining unmasked pixel values (taking the mean)
+    comb = np.ma.mean(clipped_stack, axis=0).filled([0])
+    # Write mosaic with WCS
+    hdu = fits.PrimaryHDU(comb)
+    hdu.header.update(wcs_out.to_header())
+    hdu.writeto(mosaic_file, overwrite=True)
+    return
