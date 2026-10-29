@@ -1,0 +1,3 @@
+The code works as follows
+
+rio_reduce is ran by data_reduction. Then, multiband_photometry is executed by mosaic_calibration. Lastly, plot_analysis returns the values for mosaic_calibration. 
