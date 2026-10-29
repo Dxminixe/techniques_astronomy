@@ -1,0 +1,63 @@
+# A multiband photometry script and calibration set up 
+
+import numpy as np
+from astropy.io import fits
+from photutils.detection import DAOStarFinder 
+from astropy.stats import mad_std
+from photutils.aperture import aperture_photometry, CircularAperture
+from astropy.wcs import WCS
+import os 
+
+base_path = os.path.expanduser('/Users/dxminixe/Documents/140L_physics/lab_2/python_scripts')
+
+fwhm = 1.639585 * 2 
+
+
+def run_photometry_wcs(image_list, fwhm):
+    '''Use first image to find sources'''
+    hudl = fits.open(image_list[0])
+    image = hudl[0].data
+    hdr = hudl[0].header
+    hudl.close()
+
+    # Background noise
+    bkg_sigma = mad_std(image)
+    
+    # Detect stars
+    daofind = DAOStarFinder(fwhm=fwhm, threshold=15.0*bkg_sigma)
+    sources = daofind(image)
+    for col in sources.colnames:
+        sources[col].info.format = '%.8g'
+
+    # Save RA and Dec of sources using WCS
+    wcs = WCS(hdr)
+    ra_dec = wcs.all_pix2world(sources['xcentroid'], sources['ycentroid'], 0)
+    n_source = len(ra_dec[0])
+
+    # Prepare array to store counts
+    n_image = len(image_list)
+    all_counts = np.zeros((n_source, n_image), dtype=np.float32)
+    
+    # Loop over images
+    for i in range(n_image):
+        hudl = fits.open(image_list[i])
+        image = hudl[0].data
+        hdr = hudl[0].header
+        hudl.close()
+        wcs = WCS(hdr)
+        
+        
+        # Convert RA/Dec of sources to pixel coordinates in this image
+        x, y = wcs.all_world2pix(ra_dec[0], ra_dec[1], 0)
+        positions = np.transpose((x, y))
+        
+        # Define apertures
+        apertures = CircularAperture(positions, r=2*fwhm)
+        
+        # Run photometry
+        phot_table = aperture_photometry(image, apertures)
+        for col in phot_table.colnames:
+            phot_table[col].info.format = '%.8g'
+        counts = phot_table['aperture_sum']
+        all_counts[:, i] = counts
+    return all_counts
