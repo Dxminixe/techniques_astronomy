@@ -1,0 +1,19 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import multiband_photometry_wcs as mp
+from astropy.io import fits
+
+h_flux_ratio = 2.1404420261352966e-29
+r_ratio = 2.2233592000915568e-30
+
+for name, f in [('h_alpha_mosaic.fits', h_flux_ratio),('r_mosaic.fits', r_ratio)]:
+    data, hdr = fits.getdata(name, header=True)
+    hdr['BUNIT'] = 'erg/s/cm2/Hz'
+    fits.writeto(name.replace('.fits', '_cal.fits'),data.astype(np.float64) * f, hdr, overwrite=True)
+
+
+image_list = ['h_alpha_mosaic_cal.fits', 'r_mosaic_cal.fits']
+fwhm = 3.3        # pixels
+
+phot_data = mp.run_photometry_wcs(image_list, fwhm)
+np.save('phot_data.npy', phot_data)
